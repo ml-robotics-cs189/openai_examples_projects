@@ -3,7 +3,7 @@
 import gym
 import numpy
 import time
-import qlearn
+import qqlearn
 from gym import wrappers
 import rospy
 import rospkg
@@ -13,7 +13,7 @@ from openai_ros.task_envs.wamv import wamv_nav_twosets_buoys
 
 if __name__ == '__main__':
 
-    rospy.init_node('wamv_nav_twosets_buoys_qlearn', anonymous=True, log_level=rospy.WARN)
+    rospy.init_node('wamv_nav_twosets_buoys_qqlearn', anonymous=True, log_level=rospy.WARN)
 
     # Create the Gym environment
     env = gym.make('WamvNavTwoSetsBuoys-v0')
@@ -39,9 +39,14 @@ if __name__ == '__main__':
     nsteps = rospy.get_param("/wamv/nsteps")
 
     # Initialises the algorithm that we are going to use for learning
-    qlearn = qlearn.QLearn(actions=range(env.action_space.n),
-                           alpha=Alpha, gamma=Gamma, epsilon=Epsilon)
-    initial_epsilon = qlearn.epsilon
+    #qlearn = qlearn.QLearn(actions=range(env.action_space.n),
+    #                       alpha=Alpha, gamma=Gamma, epsilon=Epsilon)
+    #initial_epsilon = qlearn.epsilon
+
+    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #initialize double q learning
+    qqlearn = qqlearn.QQLearn(actions = range(env.action_space.n), alpha = Alpha, gamma = Gamma, epsilon = Epsilon)
+    initial_epsilon = qqlearn.epsilon
 
     start_time = time.time()
     highest_reward = 0
@@ -52,8 +57,11 @@ if __name__ == '__main__':
 
         cumulated_reward = 0
         done = False
-        if qlearn.epsilon > 0.05:
-            qlearn.epsilon *= epsilon_discount
+        #if qlearn.epsilon > 0.05:
+        #    qlearn.epsilon *= epsilon_discount
+
+        if qqlearn.epsilon > 0.05:
+            qqlearn.epsilon *= epsilon_discount
 
         # Initialize the environment and get first state of the robot
         observation = env.reset()
@@ -65,7 +73,8 @@ if __name__ == '__main__':
         for i in range(nsteps):
             rospy.logwarn("############### Start Step=>" + str(i))
             # Pick an action based on the current state
-            action = qlearn.chooseAction(state)
+            #action = qlearn.chooseAction(state)
+            action = qqlearn.chooseAction(state)
             rospy.logwarn("Next action is:%d", action)
             # Execute the action in the environment and get feedback
             observation, reward, done, info = env.step(action)
@@ -83,7 +92,8 @@ if __name__ == '__main__':
             rospy.logwarn("# reward that action gave=>" + str(reward))
             rospy.logwarn("# episode cumulated_reward=>" + str(cumulated_reward))
             rospy.logwarn("# State in which we will start next step=>" + str(nextState))
-            qlearn.learn(state, action, reward, nextState)
+            #qlearn.learn(state, action, reward, nextState)
+            qqlearn.learn(state, action, reward, nextState)
 
             if not (done):
                 rospy.logwarn("NOT DONE")
@@ -97,11 +107,11 @@ if __name__ == '__main__':
             # rospy.sleep(2.0)
         m, s = divmod(int(time.time() - start_time), 60)
         h, m = divmod(m, 60)
-        rospy.logerr(("EP: " + str(x + 1) + " - [alpha: " + str(round(qlearn.alpha, 2)) + " - gamma: " + str(
-            round(qlearn.gamma, 2)) + " - epsilon: " + str(round(qlearn.epsilon, 2)) + "] - Reward: " + str(
+        rospy.logerr(("EP: " + str(x + 1) + " - [alpha: " + str(round(qqlearn.alpha, 2)) + " - gamma: " + str(
+            round(qqlearn.gamma, 2)) + " - epsilon: " + str(round(qqlearn.epsilon, 2)) + "] - Reward: " + str(
             cumulated_reward) + "     Time: %d:%02d:%02d" % (h, m, s)))
 
-    rospy.loginfo(("\n|" + str(nepisodes) + "|" + str(qlearn.alpha) + "|" + str(qlearn.gamma) + "|" + str(
+    rospy.loginfo(("\n|" + str(nepisodes) + "|" + str(qqlearn.alpha) + "|" + str(qqlearn.gamma) + "|" + str(
         initial_epsilon) + "*" + str(epsilon_discount) + "|" + str(highest_reward) + "| PICTURE |"))
 
     l = last_time_steps.tolist()
