@@ -2,7 +2,7 @@ import random
 
 class QQLearn:
 
-    def __init__(self, actions, epsilon, gamma):
+    def __init__(self, actions, epsilon, alpha, gamma):
         self.q1 = {}
         self.q2 = {}
         self.epsilon = epsilon  # exploration constant
@@ -16,7 +16,7 @@ class QQLearn:
     def getQ2(self, state, action):
     	return self.q2.get((state, action), 0.0)
 
-    def learnQQ(self, state, action, reward, value):
+    def learnQQ(self, state, action, reward, value1, value2):
         '''
         Q-learning:
             Q(s, a) += alpha * (reward(s,a) + max(Q(s') - Q(s,a))
@@ -24,19 +24,18 @@ class QQLearn:
         oldv_1 = self.q1.get((state, action), None)
         oldv_2 = self.q2.get((state, action), None)
 
-        if oldv_1 and oldv_2 is None:
+        if oldv_1 or oldv_2 is None:
             self.q1[(state, action)] = reward
             self.q2[(state, action)] = reward
 
         else:
-
-            self.q1[(state, action)] = oldv_1 + self.alpha * (value - oldv_1)
-            self.q2[(state, action)] = oldv_2 + self.aplha * (value - oldv_2)
+            self.q1[(state, action)] = oldv_1 + self.alpha * (value1 - oldv_1)
+            self.q2[(state, action)] = oldv_2 + self.aplha * (value2 - oldv_2)
 
 	
     def chooseAction(self, state, return_q=False):
-        q1 = [self.getQ(state, a) for a in self.actions]
-        q2 = [self.getQ(state, a) for a in self.actions]
+        q1 = [self.getQ1(state, a) for a in self.actions]
+        q2 = [self.getQ2(state, a) for a in self.actions]
 
         maxQ1 = max(q1)
         maxQ2 = max(q2)
@@ -60,7 +59,7 @@ class QQLearn:
         		maxQ2 = max(q2)
 
 
-        if random.random() < 0.5
+        if random.random() < 0.5:
 
         	count = q1.count(maxQ1)
 
@@ -89,6 +88,7 @@ class QQLearn:
         return action
 
     def learn(self, state1, action1, reward, state2):
-        maxqnew = max([self.getQ(state2, a) for a in self.actions])
-        self.learnQ(state1, action1, reward, reward + self.gamma*maxqnew)
+        max_q1 = max([self.getQ1(state2, a) for a in self.actions])
+	max_q2 = max([self.getQ2(state2, a) for a in self.actions])
+        self.learnQQ(state1, action1, reward, reward + self.gamma*max_q1, self.gamma*max_q2)
 

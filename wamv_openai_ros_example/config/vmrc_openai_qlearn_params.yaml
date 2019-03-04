@@ -3,7 +3,7 @@ wamv: #namespace
     #qlearn parameters
     alpha: 0.1
     gamma: 0.7
-    epsilon: 0.2 # exploration (closer to 1) vs exploitation; initially 0.9
+    epsilon: 0.9 # exploration (closer to 1) vs exploitation; initially 0.9
     epsilon_discount: 0.999
     nepisodes: 500
     nsteps: 10000
