@@ -4,5 +4,5 @@
     <!-- This version uses the openai_ros environments -->
     <rosparam command="load" file="$(find wamv_openai_ros_example)/config/vmrc_openai_qlearn_params.yaml" />
     <!-- Launch the training system -->
-    <node pkg="wamv_openai_ros_example" name="vmrc_nav_twosets_buoys" type="controller.py" output="screen"/>
+    <node pkg="wamv_openai_ros_example" name="diff_drive" type="controller.py" output="screen"/>
 </launch>
