@@ -3,10 +3,14 @@
 import gym
 import numpy
 import time
+from time import sleep
 from gym import wrappers
 import rospy
 import rospkg
 import math
+from math import atan2
+from tf.transformations import euler_from_quaternion
+import numpy as np
 
 # import our training environment
 from openai_ros.task_envs.wamv import wamv_nav_twosets_buoys
@@ -40,34 +44,84 @@ class Controller:
         self.usv_data = None
         self.odom_data = None
         self.current_pos = None
+        self.yaw = None
+
+        self.odom = rospy.Subscriber('/wamv/odom', Odometry, self.odom_callback)
+
         
-        self.check_odom_ready()
+        rospy.wait_for_message("/wamv/odom", Odometry)
 
         # ROS subscribers
-        self.odom = rospy.Subscriber('/wamv/odom', Odometry, self.odom_callback)
 
         # ROS publishers
         self.cmd_drive = rospy.Publisher('/cmd_drive', UsvDrive, queue_size=1)
 
+        self.goal = None
+        self.other_goals = [(30.0, -5.0),
+                            (30.0, 5.0), 
+                            (-1, -5), 
+                            (-1, 5)]
+
+    def drive(self):
+
+        if not self.goal:
+            if len(self.other_goals) > 0:
+                self.goal = self.other_goals.pop()
+                print("Acquired a new goal: ", self.goal)
+            else:
+                print("We are done with all the goals!")
+
+        v = self.goal - self.current_pos
+
+        # are we close enough to the goal?
+        DISTANCE_THRESHOLD = 2.0
+        if np.linalg.norm(v) < DISTANCE_THRESHOLD:
+            self.goal = None
+            print("Reached the goal!")
+
+
+        angle = atan2(v[1], v[0]) # from current X, Y to goal
+        angle_diff = angle - self.yaw
+
+        cmd_vel = UsvDrive()
+
+        ANGLE_THRESHOLD = 0.1
+        SPEED = 0.3
+        if abs(angle_diff) < ANGLE_THRESHOLD:
+            # drive straight
+            left, right = 3 * SPEED, 3 * SPEED
+        elif angle_diff >= 0:
+            # turn left
+            left, right = -SPEED, SPEED
+        elif angle_diff < 0:
+            # turn right
+            left, right = SPEED, -SPEED
+
+        cmd_vel.left = left
+        cmd_vel.right = right
+
+        print("Action: ", "left", left, "right", right)
+            
+        self.cmd_drive.publish(cmd_vel)
+
+
     def odom_callback(self, odom):
-        print("odom callback")
+        #print("odom callback")
         #self.odom_data = data
-        #self.current_pos = odom.pose.pose.position
+        p = odom.pose.pose.position
+        o = odom.pose.pose.orientation
 
-        #print("Current position: ". self.current_pos)
-        
+        self.current_pos = np.array([p.x, p.y]) 
+        (_, _, self.yaw) = euler_from_quaternion([o.x, o.y, o.z, o.w])
 
-    def check_odom_ready(self):
-        self.odom = None
-        rospy.loginfo("Waiting for /wamv/odom")
-        while self.odom is None and not rospy.is_shutdown():
-            try:
-                self.odom = rospy.wait_for_message("/wamv/odom", Odometry, timeout=1.0)
-                rospy.loginfo("/wamv/odom READY")
 
-            except:
-                rospy.logerr("Current /wamv/odom not ready yet, retrying for getting odom")
-        return self.odom
+    def fix_angle(self, angle):
+        while angle < -math.pi:
+            angle += math.pi * 2
+        while angle >= math.pi:
+            angle -= math.pi * 2
+        return angle
+
 
 
 if __name__ == '__main__':
@@ -76,14 +130,23 @@ if __name__ == '__main__':
 
     rospy.init_node("diff_drive")
 
-    r = rospy.Rate(10)
+    
+    rospy.sleep(4)  # So we don't start printing messages immediately
+                    # (it can be hard to see them amidst the startup msgs)
 
 
-
-    drive = Controller()
-
+    robot = Controller()
+    r = rospy.Rate(1)
     while not rospy.is_shutdown():
-        rospy.spin
+
+        robot.drive()
+        if robot.goal is None and len(robot.other_goals) == 0:
+            break
+
+        r.sleep()
+
+
+
 
 
 
