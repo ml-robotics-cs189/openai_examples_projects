@@ -30,7 +30,7 @@ class QQLearn:
 
         else:
             self.q1[(state, action)] = oldv_1 + self.alpha * (value1 - oldv_1)
-            self.q2[(state, action)] = oldv_2 + self.aplha * (value2 - oldv_2)
+            self.q2[(state, action)] = oldv_2 + self.alpha * (value2 - oldv_2)
 
 	
     def chooseAction(self, state, return_q=False):

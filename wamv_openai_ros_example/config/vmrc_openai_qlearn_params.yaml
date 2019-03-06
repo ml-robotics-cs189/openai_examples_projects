@@ -1,7 +1,7 @@
 wamv: #namespace
 
     #qlearn parameters
-    alpha: 0.55
+    alpha: 0.25
     gamma: 0.5
     epsilon: 0.44 # exploration (closer to 1) vs exploitation; initially 0.9
     epsilon_discount: 0.9
